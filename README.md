@@ -1,10 +1,15 @@
 # Marine Species Classification
-A Python/Keras project for classifying 13 marine species from images using a Convolutional Neural Network (CNN).
+A deep learning project for classifying 13 marine species from images using a Convolutional Neural Network (CNN).
 
 ## Project Overview
-- **Goal:** Automatically classify images of marine species into 13 categories using deep learning.
-- **Workflow:** Data preprocessing → Model training → Evaluation → Prediction → Integration into Python application.
-- **Use case:** Portfolio project showcasing practical ML and Python development skills.
+This project focuses on building an end-to-end machine learning pipeline for image classification of marine species.
+
+**Key features:**
+- Classification of **13 marine species**
+- Transfer learning using **EfficientNetB1**
+- Custom training pipeline with data augmentation
+- Evaluation using classification metrics and visualizations
+- Desktop GUI application for real-time predictions
 
 ## Technologies & Skills
 
@@ -14,8 +19,21 @@ A Python/Keras project for classifying 13 marine species from images using a Con
 ## Notes
 
 - All information regarding dataset structure, preprocessing steps, and project documentation can be found in: **docs/dokumentacja_projektu.pdf**
-- Dataset is not included due to size.  
-- This repository is intended for portfolio purposes and demonstrates hands-on experience in machine learning.
+- Dataset is not included due to size.
+
+## Demo
+
+### Interface preview
+
+| Before prediction | After prediction |
+|------------------|------------------|
+| <img src="docs/screenshots/interface.png" width="400"> | <img src="docs/screenshots/whale_example.png" width="400"> |
+
+### Full application demo
+
+<p align="center">
+  <img src="docs/screenshots/overview.gif" width="700">
+</p>
 
 ## Getting Started
 ### Prerequisites
@@ -35,13 +53,6 @@ pip install -r requirements.txt
 ```
 3. Run run.py.
 
-Application interface:  
-
-![App Interface](docs/screenshots/interface.png)
-
-Classification example - whale:  
-
-![Whale Classification](docs/screenshots/whale_example.png)
 
 
 
