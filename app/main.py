@@ -30,8 +30,7 @@ class MarineAnimalClassifierApp(ctk.CTk):
     LOADING_MESSAGES = [
         "Szukamy ryb w głębinach...",
         "Fale niosą dane...",
-        "Model nurkuje...",
-        "Analizujemy podwodny świat...",
+        "Model nurkuje..."
     ]
 
     COLORS = {
