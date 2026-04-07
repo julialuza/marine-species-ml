@@ -22,8 +22,8 @@ class MarineAnimalClassifierApp(ctk.CTk):
     PREVIEW_SIZE = (700, 700)
     SPINNER_SIZE = (96, 96)
 
-    WINDOW_SIZE = "1000x750"
-    MIN_WINDOW_SIZE = (1000, 750)
+    WINDOW_SIZE = "1000x720"
+    MIN_WINDOW_SIZE = (800, 700)
 
     DEFAULT_THRESHOLD = 85.0
 
