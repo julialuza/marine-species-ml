@@ -2,7 +2,7 @@
 A deep learning project for classifying 13 marine species from images using a Convolutional Neural Network (CNN).
 
 ## Project Overview
-This project focuses on building an end-to-end machine learning pipeline for image classification of marine species.
+This project focuses on building a complete machine learning workflow for image classification of marine species.
 
 **Key features:**
 - Classification of **13 marine species**
