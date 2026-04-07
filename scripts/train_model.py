@@ -1,110 +1,193 @@
-import os
-import tensorflow as tf
+from __future__ import annotations
+
+from pathlib import Path
+
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
-#komponenty modelu
-EfficientNetB1 = tf.keras.applications.efficientnet.EfficientNetB1
-ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator
-Model = tf.keras.Model
-Dense = tf.keras.layers.Dense
-Dropout = tf.keras.layers.Dropout
-GlobalAveragePooling2D = tf.keras.layers.GlobalAveragePooling2D
-Adam = tf.keras.optimizers.Adam
-EarlyStopping = tf.keras.callbacks.EarlyStopping
 
-#ściezki
-TRAIN_DIR = 'dataset/train'
-VAL_DIR = 'dataset/val'
-MODEL_SAVE_PATH = 'model/saved_model/model_efficientnetB1_13.keras'
+TRAIN_DIR = Path("data/train")
+VAL_DIR = Path("data/val")
 
-#lista klas
-CLASSES = sorted(os.listdir(TRAIN_DIR))
+MODEL_SAVE_PATH = Path("models/saved_model/model_efficientnetB1_13.keras")
+REPORTS_DIR = Path("reports/figures")
+
 IMG_SIZE = (240, 240)
 BATCH_SIZE = 32
+INITIAL_EPOCHS = 10
+FINE_TUNE_EPOCHS = 30
 
-#budowa modelu
-base_model = EfficientNetB1(weights='imagenet', include_top=False, input_shape=(IMG_SIZE[0], IMG_SIZE[1], 3))
-#uzycie EfficientNetB1 bez ostatnich warstw (include_top=False), z wagami z ImageNet
-x = base_model.output # pobieramy ostatnie wyjście z EfficientNet
-x = GlobalAveragePooling2D()(x) # spłaszczamy cechy przestrzenne do wektora
-x = Dropout(0.3)(x) # zastosowanie Dropoutu - wyłączenie 30% neuronów losowo
-x = Dense(384, activation='relu')(x) # gęsta warstwa ukryta z aktywacją ReLU
-predictions = Dense(len(CLASSES), activation='softmax')(x) # warstwa wyjściowa z aktywacją softmax
+FROZEN_LAYERS = 80
+INITIAL_LEARNING_RATE = 1e-4
+FINE_TUNE_LEARNING_RATE = 1e-5
+DROPOUT_RATE = 0.3
+DENSE_UNITS = 384
+LABEL_SMOOTHING = 0.05
+EARLY_STOPPING_PATIENCE = 7
 
-model = Model(inputs=base_model.input, outputs=predictions) # budujemy kompletny model
 
-# zamrożenie pierwszych 80 warstw (transfer learning)
-for layer in base_model.layers[:80]:
-    layer.trainable = False
+def get_class_names(train_dir: Path) -> list[str]:
+    if not train_dir.exists():
+        raise FileNotFoundError(f"Training directory not found: {train_dir}")
 
-# kompilacja modelu
-loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.05) # funkcja straty z wygładzeniem etykiet
-model.compile(optimizer=Adam(learning_rate=1e-4), loss=loss_fn, metrics=['accuracy']) # kompilacja
+    classes = sorted(item.name for item in train_dir.iterdir() if item.is_dir())
 
-# augmentacja
-train_datagen = ImageDataGenerator(
-    rescale=1./255, # przeskalowanie pikseli do zakresu 0–1
-    rotation_range=20, # obrót obrazu o losowy kąt
-    zoom_range=0.2, # losowe przybliżenia
-    width_shift_range=0.1, # przesunięcie w poziomie
-    height_shift_range=0.1, # przesunięcie w pionie
-    horizontal_flip=True # odbicie w poziomie
-)
-val_datagen = ImageDataGenerator(rescale=1./255) # walidacja bez augmentacji
+    if not classes:
+        raise ValueError("No class folders found in training directory.")
 
-train_gen = train_datagen.flow_from_directory(
-    TRAIN_DIR, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical'
-)
-val_gen = val_datagen.flow_from_directory(
-    VAL_DIR, target_size=IMG_SIZE, batch_size=BATCH_SIZE, class_mode='categorical'
-)
+    return classes
 
-# EarlyStopping - wcześniejsze zatrzymanie treningu jeśli nie ma poprawy wyników
-early_stop = EarlyStopping(monitor='val_accuracy', patience=7, restore_best_weights=True)
 
-#faza 1: trening z zamroxonymi warstwami
-history1 = model.fit(train_gen, epochs=10, validation_data=val_gen)
+def create_data_generators():
+    train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rescale=1.0 / 255,
+        rotation_range=20,
+        zoom_range=0.2,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        horizontal_flip=True,
+    )
 
-#faza 2: fine-tuning (odmrażanie kolejnych warstw)
-for layer in base_model.layers[80:]:
-    layer.trainable = True
+    val_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0 / 255)
 
-#kompilacja z mniejszym learning rate do delikatnego dostrajania
-model.compile(optimizer=Adam(learning_rate=1e-5), loss=loss_fn, metrics=['accuracy'])
-#kontynuacja treningu z EarlyStopping
-history2 = model.fit(train_gen, epochs=30, validation_data=val_gen, callbacks=[early_stop])
+    train_generator = train_datagen.flow_from_directory(
+        TRAIN_DIR,
+        target_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        class_mode="categorical",
+    )
 
-#zapis modelu
-model.save(MODEL_SAVE_PATH)
-print("\u2705 Model zapisany jako:", MODEL_SAVE_PATH)
+    val_generator = val_datagen.flow_from_directory(
+        VAL_DIR,
+        target_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        class_mode="categorical",
+    )
 
-#=====wykresy======
-acc = history1.history['accuracy'] + history2.history['accuracy']
-val_acc = history1.history['val_accuracy'] + history2.history['val_accuracy']
-loss = history1.history['loss'] + history2.history['loss']
-val_loss = history1.history['val_loss'] + history2.history['val_loss']
-epochs = range(1, len(acc) + 1)
+    return train_generator, val_generator
 
-plt.figure(figsize=(12, 5))
 
-plt.subplot(1, 2, 1)
-plt.plot(epochs, acc, label='Train Accuracy')
-plt.plot(epochs, val_acc, label='Validation Accuracy')
-plt.xlabel('Epoka')
-plt.ylabel('Dokładność')
-plt.title('Dokładność modelu (EfficientNetB1)')
-plt.legend()
-plt.grid(True)
+def build_model(num_classes: int) -> tuple[tf.keras.Model, tf.keras.Model]:
+    base_model = tf.keras.applications.EfficientNetB1(
+        weights="imagenet",
+        include_top=False,
+        input_shape=(IMG_SIZE[0], IMG_SIZE[1], 3),
+    )
 
-plt.subplot(1, 2, 2)
-plt.plot(epochs, loss, label='Train Loss')
-plt.plot(epochs, val_loss, label='Validation Loss')
-plt.xlabel('Epoka')
-plt.ylabel('Strata (Loss)')
-plt.title('Strata modelu (EfficientNetB1)')
-plt.legend()
-plt.grid(True)
+    x = base_model.output
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dropout(DROPOUT_RATE)(x)
+    x = tf.keras.layers.Dense(DENSE_UNITS, activation="relu")(x)
+    outputs = tf.keras.layers.Dense(num_classes, activation="softmax")(x)
 
-plt.tight_layout()
-plt.savefig('accuracy_plot_b1_13.png')
-plt.show()
+    model = tf.keras.Model(inputs=base_model.input, outputs=outputs)
+    return model, base_model
+
+
+def freeze_base_layers(base_model: tf.keras.Model, frozen_layers: int) -> None:
+    for layer in base_model.layers[:frozen_layers]:
+        layer.trainable = False
+
+    for layer in base_model.layers[frozen_layers:]:
+        layer.trainable = True
+
+
+def compile_model(model: tf.keras.Model, learning_rate: float) -> None:
+    loss_fn = tf.keras.losses.CategoricalCrossentropy(
+        label_smoothing=LABEL_SMOOTHING
+    )
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+        loss=loss_fn,
+        metrics=["accuracy"],
+    )
+
+
+def plot_training_history(history_phase_1, history_phase_2, output_path: Path) -> None:
+    train_acc = history_phase_1.history["accuracy"] + history_phase_2.history["accuracy"]
+    val_acc = history_phase_1.history["val_accuracy"] + history_phase_2.history["val_accuracy"]
+    train_loss = history_phase_1.history["loss"] + history_phase_2.history["loss"]
+    val_loss = history_phase_1.history["val_loss"] + history_phase_2.history["val_loss"]
+
+    epochs = range(1, len(train_acc) + 1)
+
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, train_acc, label="Train Accuracy")
+    plt.plot(epochs, val_acc, label="Validation Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.title("Model Accuracy")
+    plt.legend()
+    plt.grid(True)
+
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, train_loss, label="Train Loss")
+    plt.plot(epochs, val_loss, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Model Loss")
+    plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
+def train_model() -> None:
+    MODEL_SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    class_names = get_class_names(TRAIN_DIR)
+    train_generator, val_generator = create_data_generators()
+
+    model, base_model = build_model(num_classes=len(class_names))
+
+    freeze_base_layers(base_model, FROZEN_LAYERS)
+    compile_model(model, INITIAL_LEARNING_RATE)
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_accuracy",
+        patience=EARLY_STOPPING_PATIENCE,
+        restore_best_weights=True,
+    )
+
+    print("\nPHASE 1: training classifier head")
+    history_phase_1 = model.fit(
+        train_generator,
+        epochs=INITIAL_EPOCHS,
+        validation_data=val_generator,
+    )
+
+    print("\nPHASE 2: fine-tuning")
+    for layer in base_model.layers:
+        layer.trainable = True
+
+    compile_model(model, FINE_TUNE_LEARNING_RATE)
+
+    history_phase_2 = model.fit(
+        train_generator,
+        epochs=FINE_TUNE_EPOCHS,
+        validation_data=val_generator,
+        callbacks=[early_stopping],
+    )
+
+    model.save(MODEL_SAVE_PATH)
+    print(f"\nModel saved to: {MODEL_SAVE_PATH}")
+
+    plot_training_history(
+        history_phase_1=history_phase_1,
+        history_phase_2=history_phase_2,
+        output_path=REPORTS_DIR / "accuracy_plot.png",
+    )
+
+
+def main() -> None:
+    train_model()
+
+
+if __name__ == "__main__":
+    main()
