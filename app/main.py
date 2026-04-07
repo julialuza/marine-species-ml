@@ -22,8 +22,8 @@ class MarineAnimalClassifierApp(ctk.CTk):
     PREVIEW_SIZE = (700, 700)
     SPINNER_SIZE = (96, 96)
 
-    WINDOW_SIZE = "950x1150"
-    MIN_WINDOW_SIZE = (850, 950)
+    WINDOW_SIZE = "1000x700"
+    MIN_WINDOW_SIZE = (1000, 700)
 
     DEFAULT_THRESHOLD = 85.0
 
@@ -49,7 +49,7 @@ class MarineAnimalClassifierApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
 
-        self.title("Marine Vision — Klasyfikator gatunków")
+        self.title("Klasyfikator gatunków morskich")
         self.geometry(self.WINDOW_SIZE)
         self.minsize(*self.MIN_WINDOW_SIZE)
         self.configure(fg_color=self.COLORS["bg"])
@@ -97,7 +97,7 @@ class MarineAnimalClassifierApp(ctk.CTk):
         # title
         tk.Label(
             wrap,
-            text="Marine Vision",
+            text="Klasyfikator gatunków morskich",
             font=("Georgia", 40, "bold"),
             fg=self.COLORS["text"],
             bg=self.COLORS["bg"],
@@ -105,7 +105,7 @@ class MarineAnimalClassifierApp(ctk.CTk):
 
         tk.Label(
             wrap,
-            text="Klasyfikacja gatunków morskich · EfficientNetB1",
+            text="Klasyfikacja zdjęć · EfficientNetB1",
             font=("Helvetica Neue", 15),
             fg=self.COLORS["text_muted"],
             bg=self.COLORS["bg"],
