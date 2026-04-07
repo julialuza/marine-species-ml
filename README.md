@@ -33,7 +33,7 @@ cd Marine-Species-ML
 ```bash
 pip install -r requirements.txt
 ```
-3. Run app.py.
+3. Run run.py.
 
 Application interface:  
 
