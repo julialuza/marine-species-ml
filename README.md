@@ -44,8 +44,8 @@ This project focuses on building a complete machine learning workflow for image 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/julialuza/Marine-Species-ML.git
-cd Marine-Species-ML
+git clone https://github.com/julialuza/marine-species-ml.git
+cd marine-species-ml
 ```
 2. Install dependencies
 ```bash
